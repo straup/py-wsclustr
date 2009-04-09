@@ -2,6 +2,7 @@
 
 from boto.ec2.connection import EC2Connection
 import time
+import urllib2
 
 class wsclustr :
 
@@ -13,6 +14,8 @@ class wsclustr :
         self.instance = None        
         self.reservation = None
 
+        self.endpoint = 'ws-clustr'
+        
     #
     
     def startup (self, ami) :
@@ -52,12 +55,43 @@ class wsclustr :
 
     #
 
-    def clustr (self) :
+    def clustr (self, points, alpha=None, fname=None) :
 
+        try:
+            fh = open(points, 'rb')
+        except Exception, e :
+            print "failed to open '%s' for reading, %s" % (points, e)
+            return False
+
+        body = fh.read()
+        
+        #
+        
         host = self.instance.public_dns_name
-        path = 'ws-clustr'
+        url = "http://%s/%s" % (host, self.endpoint)
 
-        print "http://%s/%s" % (host, path)
+        req = urllib2.Request(url)
+
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        req.add_header('Content-Length', len(body))
+            
+        if alpha :
+            req.add_header('x-clustr-alpha', alpha)
+
+        if fname :
+            req.add_header('x-clustr-name', fname)
+
+        req.add_data(body)
+
+        # timing out...WTF?
+        
+        try :            
+            response = urllib2.urlopen(req)
+        except Exception, e :
+            print "failed to clustr '%s' using '%s', %s" % (points, url, e)
+            return False
+        
+        print response.read()
         
     #
     
@@ -66,7 +100,8 @@ class wsclustr :
         i = self.instance
         i.stop()
 
-        
+    #
+    
 if __name__ == '__main__' :
 
     import optparse
@@ -74,7 +109,10 @@ if __name__ == '__main__' :
     
     parser = optparse.OptionParser()
     parser.add_option("-c", "--config", dest="config", help="path to an ini config file")
-    parser.add_option("-a", "--ami", dest="ami", help="the name of the EC2 AMI to use")    
+    parser.add_option("-A", "--ami", dest="ami", help="the name of the EC2 AMI to use")
+    parser.add_option("-p", "--points", dest="points", help="the path of the points file to clustrize")
+    parser.add_option("-a", "--alpha", dest="alpha", help="the size of the alpha to clustr the points file with", default=None)
+    parser.add_option("-n", "--name", dest="name", help="the name of your shapefile", default=None)        
 
     (opts, args) = parser.parse_args()
 
@@ -83,7 +121,11 @@ if __name__ == '__main__' :
 
     access_key = cfg.get("aws", "access_key")
     secret_key = cfg.get("aws", "secret_key")
+
     ami = opts.ami
+    points = opts.points
+    alpha = opts.alpha
+    name = opts.name
     
     #
     
@@ -94,7 +136,7 @@ if __name__ == '__main__' :
         print "not ready..."
         time.sleep(5)
 
-    clustr.clustr()
+    clustr.clustr(points, alpha, name)
 
     """
     clustr.shutdown()
