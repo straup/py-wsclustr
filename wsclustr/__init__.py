@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+__package__    = "wsclustr"
+__author__     = "Aaron Straup Cope"
+__url__        = "http://www.aaronland.info/python/wsclustr"
+__copyright__  = "Copyright (c) 200 Aaron Straup Cope. BSD license : http://www.modestmaps.com/license.txt"
+
 from boto.ec2.connection import EC2Connection
 import urllib2
 import time
@@ -12,7 +17,6 @@ class wsclustr :
         self.conn = EC2Connection(access_key, secret_key)
 
         self.is_ready = False
-        self.ami = None
         self.instance = None        
         self.reservation = None
 
@@ -93,10 +97,12 @@ class wsclustr :
 
         req = urllib2.Request(url)
 
+        #
+        
         req.add_header('Content-Type', 'application/x-www-form-urlencoded')
         req.add_header('Content-Length', len(body))
             
-        if kwargs.has_key(alpha) and kwargs['alpha'] :
+        if kwargs.has_key('alpha') and kwargs['alpha'] :
 
             if self.verbose :
                 print "alpha: %s" % kwargs['alpha']
@@ -107,10 +113,17 @@ class wsclustr :
             shortname = os.path.basename(kwargs['filename'])
             shortname = shortname.replace(".tar.gz", "")            
 
+            if self.verbose :
+                print "filename: %s" % kwargs['filename']
+                
             req.add_header('x-clustr-name', shortname)
 
+        #
+        
         req.add_data(body)
 
+        #
+        
         if self.verbose :
             print "connect to %s" % url
         
@@ -146,7 +159,7 @@ class wsclustr :
         #
 
         if self.verbose :
-            print "return %s" % fname
+            print "return: %s" % fname
             
         return fname
     
@@ -188,7 +201,7 @@ if __name__ == '__main__' :
     points = opts.points
     alpha = opts.alpha
     fname = opts.filename
-    
+
     clustr = wsclustr(access_key, secret_key, opts.verbose)
 
     clustr.startup(ami)
@@ -196,7 +209,9 @@ if __name__ == '__main__' :
     while not clustr.ready() :
         time.sleep(5)
 
-    clustr.clustr(points, alpha=alpha, filename=fname)
+    shpfile = clustr.clustr(points, alpha=alpha, filename=fname)
     
     if opts.terminate :
         clustr.shutdown()
+
+    print "shapefile created and stored in %s" % shpfile
