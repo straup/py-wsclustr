@@ -1,5 +1,59 @@
 Python bindings for spinning up and using an EC2 instance running ws-clustr.
 
+       http://code.flickr.com/blog/2009/04/07/the-only-question-left-is/
+       http://github.com/straup/ws-clustr/tree/master
+
+If you pass it a file containing points it will return a compressed shapefile
+for those points created by the Clustr application.
+
+    http://code.flickr.com/blog/2008/10/30/the-shape-of-alpha/
+
 --
 
-THIS IS NOT FINISHED YET. NO.
+Notes:
+
+If you already have a running instance of a given AMI then it will be used
+rather than spinning up a new server.
+
+At the moment, this code does not account for multiple instances of the same
+AMI running. It simply uses the first one it finds.
+
+--
+
+Usage (from your code) :
+
+from wsclustr import wsclustr
+
+clustr = wsclustr('access_key', 'secret_key')
+clustr.startup('ami-xxxxx')
+    
+while not clustr.ready() :
+    time.sleep(5)
+
+shpfile = clustr.clustr('/path/to/points.txt')
+
+clustr.shutdown()
+
+--
+
+Usage (from the command line) :
+
+$> python wsclustr/__init__.py -c ~/path/to/aws.cfg -A ami-xxxxx -P ~/path/to/points.txt -f ~/path/to/test.tar.gz -a 0.02 
+
+-c /path/to/your/ini.cfg
+-A Amazon EC2 AMI number
+-P /path/to/your/points.txt
+
+-a alpha number (optional)
+-f /path/to/your/shapefile.tar.gz (optional)
+-t terminate the AMI instance (optional)
+-v enable verbose logging (optional)
+
+--
+
+Example config file:
+
+[aws]
+access_key=AMAZON_WEBSERVICES_ACCESSKEY
+secret_key=AMAZON_WEBSERVICES_SECRETKEY
+
