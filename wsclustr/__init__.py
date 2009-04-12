@@ -9,6 +9,7 @@ from boto.ec2.connection import EC2Connection
 import urllib2
 import time
 import os.path
+import hashlib
 
 class wsclustr :
 
@@ -82,26 +83,15 @@ class wsclustr :
         if self.verbose :
             print "clustr: %s" % points
             
-        try:
-            fh = open(points, 'rb')
-        except Exception, e :
-            print "failed to open '%s' for reading, %s" % (points, e)
-            return False
-
-        body = fh.read()
-        
         #
         
         host = self.instance.public_dns_name
         url = "http://%s/%s" % (host, self.endpoint)
 
         req = urllib2.Request(url)
-
-        #
         
-        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
-        req.add_header('Content-Length', len(body))
-            
+        #
+                    
         if kwargs.has_key('alpha') and kwargs['alpha'] :
 
             if self.verbose :
@@ -119,22 +109,54 @@ class wsclustr :
             req.add_header('x-clustr-name', shortname)
 
         #
+        # what to send?
+        #
         
-        req.add_data(body)
+        if kwargs.has_key('try_cache') and kwargs['try_cache'] :
+            md5 = self._md5sum(points)
+            req.add_header('x-clustr-cache', 'clustr-%s' % md5)
 
+            if self.verbose :
+                print "try cached version with key: %s" % md5
+                
+        else :
+
+            try:
+                fh = open(points, 'rb')
+            except Exception, e :
+                print "failed to open '%s' for reading, %s" % (points, e)
+                return False
+
+            body = fh.read()
+
+            req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+            req.add_header('Content-Length', len(body))
+            req.add_data(body)
+
+        #
+        # Go!
         #
         
         if self.verbose :
             print "connect to %s" % url
-        
-        try :            
+            
+        try :
             response = urllib2.urlopen(req)
-        except Exception, e :
+        except urllib2.HTTPError, e :
+
+            if e.code == 404 and kwargs.has_key('try_cache') :
+
+                if self.verbose :
+                    print "try again without cache"
+                
+                kwargs['try_cache'] = 0
+                return self.clustr(points, **kwargs)
+
             print "failed to clustr '%s' using '%s', %s" % (points, url, e)
             return False
-
-        if response.code != 200 :
-            print "failed to clustr '%s' with http error: %s, %s" % (points, response.code, response.msg)
+        
+        except Exception, e :
+            print "failed to clustr '%s' using '%s', %s" % (points, url, e)
             return False
 
         #
@@ -174,7 +196,19 @@ class wsclustr :
         i.stop()
 
     #
-    
+
+    def _md5sum (self, path) :
+
+        m = hashlib.md5()
+        
+        fh = open(path,"rb")
+
+        for ln in fh.readlines() :
+            m.update(ln)
+
+        return m.hexdigest()
+
+                                                                                    
 if __name__ == '__main__' :
 
     import optparse
@@ -184,6 +218,7 @@ if __name__ == '__main__' :
     parser.add_option("-c", "--config", dest="config", help="path to an ini config file")
     parser.add_option("-A", "--ami", dest="ami", help="the name of the EC2 AMI to use")
     parser.add_option("-P", "--points", dest="points", help="the path of the points file to clustrize")
+    parser.add_option("-C", "--try_cache", dest="try_cache", help="first ask ws-clustr to use a cached version of your points file", default=False, action='store_true')    
     parser.add_option("-a", "--alpha", dest="alpha", help="the size of the alpha to clustr the points file with", default=None)
     parser.add_option("-f", "--filename", dest="filename", help="the name of your shapefile", default=None)        
     parser.add_option("-t", "--terminate", dest="terminate", help="terminate the AMI instance", default=False, action='store_true')
@@ -201,6 +236,7 @@ if __name__ == '__main__' :
     points = opts.points
     alpha = opts.alpha
     fname = opts.filename
+    try_cache = opts.try_cache
 
     clustr = wsclustr(access_key, secret_key, opts.verbose)
 
@@ -209,7 +245,7 @@ if __name__ == '__main__' :
     while not clustr.ready() :
         time.sleep(5)
 
-    shpfile = clustr.clustr(points, alpha=alpha, filename=fname)
+    shpfile = clustr.clustr(points, alpha=alpha, filename=fname, try_cache=try_cache)
     
     if opts.terminate :
         clustr.shutdown()
