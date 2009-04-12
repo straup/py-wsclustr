@@ -10,16 +10,6 @@ for those points created by the Clustr application.
 
 --
 
-Notes:
-
-If you already have a running instance of a given AMI then it will be used
-rather than spinning up a new server.
-
-At the moment, this code does not account for multiple instances of the same
-AMI running. It simply uses the first one it finds.
-
---
-
 Usage (from your code) :
 
 from wsclustr import wsclustr
@@ -30,7 +20,7 @@ clustr.startup('ami-xxxxx')
 while not clustr.ready() :
     time.sleep(5)
 
-shpfile = clustr.clustr('/path/to/points.txt')
+shpfile = clustr.clustr('/path/to/points.txt', try_cache=1)
 
 clustr.shutdown()
 
@@ -44,10 +34,39 @@ $> python wsclustr/__init__.py -c ~/path/to/aws.cfg -A ami-xxxxx -P ~/path/to/po
 -A Amazon EC2 AMI number
 -P /path/to/your/points.txt
 
+-C ask ws-clustr to try and use a cached version of the points file; if this
+   operation fails then py-wsclustr will try again resending the points file (optional)
 -a alpha number (optional)
 -f /path/to/your/shapefile.tar.gz (optional)
 -t terminate the AMI instance (optional)
 -v enable verbose logging (optional)
+
+--
+
+IMPORTANT: THE INTERFACE TO THIS PACKAGE IS GOING TO CHANGE SHORTLY.
+
+Where once you did:
+
+    from wsclustr import wsclustr
+    clustr = wsclustr('access_key', 'secret_key')
+
+Soon you will probably need need to do:
+
+    from wsclustr import wsclustr.ec2
+    clustr = wsclustr.ec2('access_key', 'secret_key')
+    
+This is so that you will be able to use (py) ws-clustr on non-ec2
+hosts. Just something to keep in mind.
+
+--
+
+EC2 Notes:
+
+If you already have a running instance of a given AMI then it will be used
+rather than spinning up a new server.
+
+At the moment, this code does not account for multiple instances of the same
+AMI running. It simply uses the first one it finds.
 
 --
 
