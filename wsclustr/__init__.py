@@ -15,7 +15,7 @@ class wsclustr :
 
     def __init__ (self, access_key, access_secret, verbose=False) :
     
-        self.conn = EC2Connection(access_key, secret_key)
+        self.conn = EC2Connection(access_key, access_secret)
 
         self.is_ready = False
         self.instance = None        
@@ -142,6 +142,7 @@ class wsclustr :
             
         try :
             response = urllib2.urlopen(req)
+
         except urllib2.HTTPError, e :
 
             if e.code == 404 and kwargs.has_key('try_cache') :
@@ -213,6 +214,7 @@ if __name__ == '__main__' :
 
     import optparse
     import ConfigParser
+    import tarfile
     
     parser = optparse.OptionParser()
     parser.add_option("-c", "--config", dest="config", help="path to an ini config file")
@@ -251,3 +253,34 @@ if __name__ == '__main__' :
         clustr.shutdown()
 
     print "shapefile created and stored in %s" % shpfile
+
+    #
+    
+    t = tarfile.open(shpfile)    
+    t.extractall()
+
+    shp = shpfile.replace(".tar.gz", "")
+    shp = "%s/%s.shp" % (shp, shp)
+
+    #
+    
+    import shpUtils
+    from shapely.geometry import Polygon
+    
+    polys = []
+    
+    for record in shpUtils.loadShapefile(shp) :
+        for part in record['shp_data']['parts'] :
+
+            poly = []
+            
+            for pt in part['points'] :
+                if pt.has_key('x') and pt.has_key('y') :
+                    poly.append((pt['x'], pt['y']))
+
+            poly = tuple(poly)
+            p = Polygon(poly)
+
+            polys.append(p)
+            
+    print "%s shapely.py polygons" % len(polys) 
