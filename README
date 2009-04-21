@@ -26,7 +26,7 @@ Usage (from your code) :
 # Connecting to localhost
 #
 
-clustr = wsclustr.ec2(hostname='localhost')
+clustr = wsclustr.wsclustr(hostname='localhost')
 shpfile = clustr.clustr('/path/to/points.txt', try_cache=1)
 
 #
