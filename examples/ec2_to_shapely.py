@@ -41,10 +41,11 @@ if __name__ == '__main__' :
     
     import optparse
     import ConfigParser
-    import tarfile
+    import time
     
     parser = optparse.OptionParser()
     parser.add_option("-c", "--config", dest="config", help="path to an ini config file")
+    parser.add_option("-E", "--endpoint", dest="endpoint", help="the endpoint that ws-clustr is running on", default="ws-clustr/")
     parser.add_option("-A", "--ami", dest="ami", help="the name of the EC2 AMI to use")
     parser.add_option("-P", "--points", dest="points", help="the path of the points file to clustrize")
     parser.add_option("-C", "--try_cache", dest="try_cache", help="first ask ws-clustr to use a cached version of your points file", default=False, action='store_true')    
@@ -61,20 +62,14 @@ if __name__ == '__main__' :
     access_key = cfg.get("aws", "access_key")
     secret_key = cfg.get("aws", "secret_key")
 
-    ami = opts.ami
-    points = opts.points
-    alpha = opts.alpha
-    fname = opts.filename
-    try_cache = opts.try_cache
+    clustr = wsclustr.ec2(access_key=access_key, secret_key=secret_key, endpoint=opts.endpoint, verbose=opts.verbose)
 
-    clustr = wsclustr.wsclustr(access_key, secret_key, opts.verbose)
-
-    clustr.startup(ami)
+    clustr.startup(ami=opts.ami)
     
     while not clustr.ready() :
         time.sleep(5)
 
-    shpfile = clustr.clustr(points, alpha=alpha, filename=fname, try_cache=try_cache)
+    shpfile = clustr.clustr(opts.points, alpha=opts.alpha, filename=opts.filename, try_cache=opts.try_cache)
     
     if opts.terminate :
         clustr.shutdown()
@@ -92,8 +87,14 @@ if __name__ == '__main__' :
     #
     
     polys = []
+
+    print shp
     
     for record in shpUtils.loadShapefile(shp) :
+
+        print record
+        continue
+    
         for part in record['shp_data']['parts'] :
 
             poly = []

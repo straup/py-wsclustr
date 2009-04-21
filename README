@@ -1,21 +1,40 @@
-Python bindings for spinning up and using an EC2 instance running ws-clustr.
-
-       http://code.flickr.com/blog/2009/04/07/the-only-question-left-is/
-       http://github.com/straup/ws-clustr/tree/master
+Python bindings for ws-clustr.php (optionally running it using an EC2 instance)
 
 If you pass it a file containing points it will return a compressed shapefile
 for those points created by the Clustr application.
 
-    http://code.flickr.com/blog/2008/10/30/the-shape-of-alpha/
+       http://code.flickr.com/blog/2008/10/30/the-shape-of-alpha/
+       http://code.flickr.com/blog/2009/04/07/the-only-question-left-is/
+
+       http://www.aaronland.info/weblog/2009/04/12/hammock#py-wsclustr-php
+
+       http://github.com/straup/py-wsclustr/
+       http://github.com/straup/ws-clustr/
 
 --
 
 Usage (from your code) :
 
-from wsclustr import wsclustr
+# IMPORTANT:
+#
+# A backwards incompatible change the interface for this library
+# was made on 20090420. If you are using an earlier version you
+# should update your code accordingly. Sorry about that. The plan
+# is to avoid doing that again in the future.
 
-clustr = wsclustr('access_key', 'secret_key')
-clustr.startup('ami-xxxxx')
+#
+# Connecting to localhost
+#
+
+clustr = wsclustr.ec2(hostname='localhost')
+shpfile = clustr.clustr('/path/to/points.txt', try_cache=1)
+
+#
+# Connecting to EC2
+#
+
+clustr = wsclustr.ec2(access_key='access_key', secret_key='secret_key')
+clustr.startup(ami='ami-xxxxx')
     
 while not clustr.ready() :
     time.sleep(5)
@@ -26,37 +45,26 @@ clustr.shutdown()
 
 --
 
-Usage (from the command line) :
+Usage (connecting to EC2, from the command line) :
 
-$> python wsclustr/__init__.py -c ~/path/to/aws.cfg -A ami-xxxxx -P ~/path/to/points.txt -f ~/path/to/test.tar.gz -a 0.02 
+$> python examples/ec2.py -c ~/path/to/aws.cfg -A ami-xxxxx -P ~/path/to/points.txt -f ~/path/to/test.tar.gz -a 0.02 
 
--c /path/to/your/ini.cfg
--A Amazon EC2 AMI number
--P /path/to/your/points.txt
-
--C ask ws-clustr to try and use a cached version of the points file; if this
-   operation fails then py-wsclustr will try again resending the points file (optional)
--a alpha number (optional)
--f /path/to/your/shapefile.tar.gz (optional)
--t terminate the AMI instance (optional)
--v enable verbose logging (optional)
-
---
-
-IMPORTANT: THE INTERFACE TO THIS PACKAGE IS GOING TO CHANGE SHORTLY.
-
-Where once you did:
-
-    from wsclustr import wsclustr
-    clustr = wsclustr('access_key', 'secret_key')
-
-Soon you will probably need need to do:
-
-    from wsclustr import wsclustr.ec2
-    clustr = wsclustr.ec2('access_key', 'secret_key')
-    
-This is so that you will be able to use (py) ws-clustr on non-ec2
-hosts. Just something to keep in mind.
+Options:
+  -h, --help            show this help message and exit
+  -c CONFIG, --config=CONFIG
+                        path to an ini config file
+  -E ENDPOINT, --endpoint=ENDPOINT
+                        the endpoint that ws-clustr is running on
+  -A AMI, --ami=AMI     the name of the EC2 AMI to use
+  -P POINTS, --points=POINTS
+                        the path of the points file to clustrize
+  -C, --try_cache       first ask ws-clustr to use a cached version of your points file
+  -a ALPHA, --alpha=ALPHA
+                        the size of the alpha to clustr the points file with
+  -f FILENAME, --filename=FILENAME
+                        the name of your shapefile
+  -t, --terminate       terminate the AMI instance
+  -v, --verbose         enable verbose logging
 
 --
 
