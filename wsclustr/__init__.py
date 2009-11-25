@@ -11,10 +11,6 @@ import urllib2
 import time
 import os.path
 import hashlib
-
-# ec2 stuff
-
-from boto.ec2.connection import EC2Connection
 import time
 
 class wsclustr :
@@ -63,7 +59,7 @@ class wsclustr :
             print "clustr: %s" % points
         
         url = "http://%s/%s" % (self.hostname(), self.endpoint())
-        
+
         req = urllib2.Request(url)
         
         if kwargs.has_key('alpha') and kwargs['alpha'] :
@@ -78,8 +74,8 @@ class wsclustr :
             shortname = shortname.replace(".tar.gz", "")            
 
             if self.verbose :
-                print "filename: %s" % kwargs['filename']
-                
+                print "filename: %s" % shortname
+     
             req.add_header('x-clustr-name', shortname)
 
         #
@@ -135,10 +131,27 @@ class wsclustr :
             return False
 
         headers = response.headers
-        fname = headers['x-clustr-filename']
 
+        if self.verbose :
+            print "return headers: '%s'" % str(headers)
+            
+        try :
+            fname = headers['x-clustr-filename']
+            
+        except Exception, e:
+
+            if kwargs.has_key('filename') and kwargs['filename'] :
+            	shortname = os.path.basename(kwargs['filename'])
+            	fname = shortname.replace(".tar.gz", "")            
+            else :
+            	fname = os.path.basename(points)
+
+	#
+        
         if kwargs.has_key('filename') and kwargs['filename'] :
-            fname = kwargs['filename']
+            fname = os.path.join(os.path.dirname(kwargs['filename']), fname)
+
+        #
         
         try :
             fh = open(fname, 'wb')
@@ -175,11 +188,17 @@ class ec2 (wsclustr) :
 
         wsclustr.__init__(self, **kwargs)
 
-        self.conn = EC2Connection(kwargs['access_key'], kwargs['secret_key'])
-
         self.is_ready = False
         self.instance = None        
         self.reservation = None
+
+        try :
+            from boto.ec2.connection import EC2Connection
+            self.conn = EC2Connection(kwargs['access_key'], kwargs['secret_key'])
+            self.is_ready = True
+        
+        except Exception, e :
+            print "failed to create EC2 connection: %s" % e
 
     def hostname (self) :
         return self.instance.public_dns_name
